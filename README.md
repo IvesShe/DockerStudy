@@ -1,6 +1,8 @@
 # Docker Study
 學習之後，製作成筆記，方便日後使用時復習
 
+- ![image](./images/2020-08-01192503.png)
+
 ```shell
 docker version      # 顯示docker的版本信息
 docker info         # 顯示docker的系統信息，包括鏡像和容器的數量
