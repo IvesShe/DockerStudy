@@ -3,11 +3,111 @@
 
 - ![image](./images/2020-08-01192503.png)
 
+# CentOS7 安裝docker
+
+> 環境查看
+```shell
+# 系統內核是3.10以上
+uname -r
+# 查看linux系統版本
+cat /etc/os-release
+```
+
+![image](./images/20200812155418.png)
+
+> 安裝
+
+[參考網址](https://docs.docker.com/engine/install/centos/)
+
+```shell
+# 1.卸載舊版本
+yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
+
+# 2.需要的安裝包      
+yum install -y yum-utils
+```
+
+![image](./images/20200812160510.png)
+
+```shell
+# 3.設置鏡像的倉庫
+yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+```
+
+![image](./images/20200812160807.png)
+
+```shell
+# 更新yum軟體包索引 
+yum makecache fast
+```
+![image](./images/20200812161227.png)
+
+
+```shell
+# 4.安裝DOCKER ENGINE 
+# docker-ce 社區版
+yum install docker-ce docker-ce-cli containerd.io
+```
+
+![image](./images/20200812161501.png)
+
+![image](./images/20200812161525.png)
+
+
+```shell
+# 5.Start Docker 啟動docker
+systemctl start docker
+
+# 6.使用docker version 是否安裝成功
+docker version
+```
+![image](./images/20200812161818.png)
+
+```shell
+# 7. hello-world
+docker run hello-world
+```
+
+![image](./images/20200812162128.png)
+
+
+```shell
+# 8. 查看一下hello-world鏡像
+docker images
+```
+
+![image](./images/20200812162316.png)
+
+> 了解卸載docker依賴
+
+```shell
+# 1. 卸載依賴
+yum remove docker-ce docker-ce-cli containerd.io
+
+# 2. 卸載資源
+rm -rf /var/lib/docker
+
+# /var/lib/docker docker的默認工作路徑
+```
+
+-------
+
 ```shell
 docker version      # 顯示docker的版本信息
 docker info         # 顯示docker的系統信息，包括鏡像和容器的數量
 docker 命令 --help  # 幫助命令
 ```
+
+# 有一部分在windows的環境練習，也沒有截圖，只單純記錄指令
 
 # 鏡像命令
 ```shell
@@ -461,21 +561,37 @@ MAINTAINER ivesshe<ivesshe@gmail.com>
 ENV MYPATH /usr/local
 WORKDIR $MYPATH
 
-RUN yun -y install vim
-RUN yun -y install net-tools
+RUN yum -y install vim
+RUN yum -y install net-tools
 
 EXPOSE 80
-CMD echo $MYPAATH
+CMD echo $MYPATH
 CMD echo "---end---"
 CMD /bin/bash
+```
 
+![image](./images/20200812163556.png)
+
+
+```shell
 # 2、通過這個文件構建鏡像
 # 命令 docker build -f dockerfile文件路徑 -t 鏡像名:[TAG]
 docker build -f mydockerfile-centos -t mycentos:0.1 .
-docker run -it mycentos:0.1 
+```
 
+```shell
+# 3、測試運行
+docker images
+docker run -it mycentos:0.1
+```
+
+![image](./images/20200812164258.png)
+
+查看建構歷史
+```shell
 docker history b9656c554c75
 ```
+![image](./images/20200812164630.png)
 
 > CMD 和 ENTRYPOINT 區別
 ```shell
@@ -484,6 +600,547 @@ ENTRYPOINT      # 指定這個容器啟動的時候要運行的命令，可以�
 ```
 
 
+> 構建一個測試檔，測試cmd
+```shell
+# 編寫 dockerfile 文件
+vim dockerfile-cmd-test
+```
+```shell
+FROM centos
+CMD ["ls","-a"]
+```
+```
+# 構建鏡像
+docker build -f dockerfile-cmd-test -t cmdtest .
+```
+
+![image](./images/20200812173713.png)
+
+```shell
+# run運行，發現我們的ls -a命令生效
+docker run 6e2857b7d841
+```
+
+![image](./images/20200812173917.png)
+
+> 構建一個測試檔，測試ENTRYPOINT
+```shell
+# 編寫 dockerfile 文件
+vim dockerfile-cmd-entrypoint
+```
+```shell
+FROM centos
+ENTRYPOINT ["ls","-a"]
+```
+
+```shell
+# 構建鏡像
+docker build -f dockerfile-cmd-entrypoint -t entrypoint-test .
+```
+
+```shell
+# run運行
+docker run ab410c93db6f
+```
+
+![image](./images/20200812174716.png)
+
+```shell
+# 我們追加命令，是直接拼接在我們 ENTRYPOINT 命令的後面
+docker run ab410c93db6f -l
+```
+
+![image](./images/20200812175008.png)
+
+# 實戰：Tomcat鏡像
+1、準備鏡像文件tomcat壓縮包、jdk壓縮包
+
+2、編寫dockerfile文件
+
+下載jdk
+
+https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html#license-lightbox
+
+![image](./images/20200812180024.png)
+
+**下載前還要先註冊Oracle的帳號**
+
+3、準備好對應的檔案
+
+![image](./images/20200813100126.png)
+
+![image](./images/20200813100306.png)
+
+4、編寫dockerfile文件，官方命名 **Dockerfile** ，build會自動尋找這個文件，就不需要-f指定了
+
+```shell
+FROM centos
+MAINTAINER ivesshe<ivesshe@gmail.com>
+
+COPY readme.txt /usr/local/readme.txt
+
+ADD jdk-8u202-linux-x64.tar.gz /usr/local/
+ADD apache-tomcat-7.0.70.tar.gz /usr/local/
+
+RUN yum -y install vim
+
+ENV MYPATH /usr/local
+WORKDIR $MYPATH
+
+ENV JAVA_HOME /usr/local/jdk1.8.0_202
+ENV CLASSPATH $JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+ENV CATALINA_HOME /usr/local/apache-tomcat-7.0.70
+ENV CATALINA_BASH /usr/local/apache-tomcat-7.0.70
+ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/lib:$CATALINA_HOME/bin
+          
+EXPOSE 8080
+          
+CMD /usr/local/apache-tomcat-7.0.70/bin/startup.sh && tail -F /usr/local/apache-tomcat-7.0.70/bin/logs/catalina.out
+
+```
+![image](./images/20200813102657.png)
+
+5、構建鏡像
+```shell
+docker build -t diytomcat .
+```
+
+![image](./images/20200813102525.png)
+
+![image](./images/20200813102553.png)
+
+6、運行鏡像
+
+```shell
+docker run -d -p 9090:8080 --name ivesshe_tomcat -v /home/dockerfile/tomcat/test:/usr/local/apache-tomcat-7.0.70/webapps/test -v /home/dockerfile/tomcat/tomcatlogs/:/usr/local/apache-tomcat-7.0.70/logs diytomcat
+```
+```shell
+docker ps
+docker exec -it 71fa77fdba3f /bin/bash
+```
+
+```shell
+docker ps
+docker exe
+```
+
+![image](./images/20200813104557.png)
+
+7、訪問測試
+
+```shell
+curl localhost:9090
+```
+
+![image](./images/20200813105423.png)
+
+阿里雲安全組要先設定
+![image](./images/20200813105556.png)
+
+![image](./images/20200813105627.png)
+
+8、發佈項目(由於作了卷掛載，可以直接在本地編寫項目，就可以發布了)
+
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.4" 
+    xmlns="http://java.sun.com/xml/ns/j2ee" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee 
+        http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+</web-app>
+```
+
+```jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hello IvesShe</title>
+</head>
+<body>
+Hello World!<br/>
+<%
+out.println("你的 IP 地址 " + request.getRemoteAddr());
+System.out.println("----my test web logs----");
+%>
+</body>
+</html>
+```
+
+![image](./images/20200813112727.png)
+
+![image](./images/20200813112823.png)
+
+![image](./images/20200813113012.png)
+
+發佈失敗，原因不清楚，tomcat還不是那麼熟悉，這邊先忽略
+
+![image](./images/20200813113110.png)
+
+
+9、查看日誌
+
+```shell
+cat catalina.out
+```
+
+![image](./images/20200813113328.png)
+
+![image](./images/20200813113334.png)
+
+10、除錯
+
+將index.jsp、web.xml往上搬一層到test目錄，測試過後發現可以發佈了
+
+![image](./images/20200813113939.png)
+
+日誌也有訪問的結果了
+
+![image](./images/20200813114058.png)
+
+![image](./images/20200813114201.png)
+
+# 發佈自己的鏡像
+
+https://hub.docker.com/
+
+
+登錄docker hub
+```shell
+docker login --help
+docker login -u ivesshe
+```
+
+![image](./images/20200813120015.png)
+
+
+先把要提交的鏡像設定tag
+```shell
+docker tag diytomcat ivesshe/diytomcat
+docker images
+docker push ivesshe/diytomcat
+```
+
+![image](./images/20200813131632.png)
 
 ---
-# 筆記到p29
+
+# 發佈到阿里雲容器服務
+
+## 在阿里雲上創建鏡像倉庫
+
+![image](./images/20200813132225.png)
+
+先登出之前的帳號
+```shell
+docker logout
+```
+
+![image](./images/20200813132446.png)
+
+先將鏡像設置tag，再push上去
+```shell
+docker tag diytomcat registry-intl.cn-hongkong.aliyuncs.com/ivesshe/ivesshe_test:1.0
+docker push registry-intl.cn-hongkong.aliyuncs.com/ivesshe/ivesshe_test:1.0
+```
+
+![image](./images/20200813133204.png)
+
+# Docker網絡
+
+```shell
+ip addr
+```
+
+三個網絡
+![image](./images/20200813134906.png)
+
+> 問題： docker 是如何處理容器網路訪問的？
+
+查看容器的內部網路地址 ip addr，發現容器啟動的時候會得到一個eth0@if25 ip地址，docker分配的
+```shell
+docker run -d -P --name tomcat01 tomcat
+docker exec -it tomcat01 ip addr
+```
+
+![image](./images/20200813135705.png)
+
+思考，linux能不能 ping 通容器內部
+```shell
+ping 172.17.0.3
+```
+
+linux 可以 ping 通 docker 容器內部
+
+![image](./images/20200813140417.png)
+
+> 原理
+
+1、我們每啟動一個docker容器，docker就會給docker容器分配一個ip, 我們只要安裝了docker，就會有一個網卡docker0橋接模式，使用的技術是evth-pair技術
+
+再次測試ip addr
+
+![image](./images/20200813141026.png)
+
+2、再啟動一個tomcat02測試，發現又多了一對網卡
+
+```shell
+docker run -d -P --name tomcat02 tomcat
+```
+
+![image](./images/20200813141315.png)
+
+```shell
+docker exec -it tomcat02 ip addr
+```
+
+網卡是一對的增加
+
+![image](./images/20200813141616.png)
+
+```shell
+# 我們發現這個容器帶來的網卡，都是一對對的
+# evth-pair 就是一對的虛擬設備接口，他們都是成對出現的，一段連著協議，一段彼此相連
+# 正因為有這個特性，evth-pair 充當一個橋梁，連接各種虛擬網絡設備
+# OpenStac，Docker容器之間的連接，OVS的連接，都是使用 evth-pair 技術
+```
+
+3、我們來測試下tomcat01和tomcat02是否可以ping通
+
+```shell
+docker exec -it tomcat01 ip addr
+docker exec -it tomcat02 ping 172.17.0.3
+```
+
+![image](./images/20200813142454.png)
+
+**結論: 容器和容器之間，是可以互相ping通的**
+**tomcat01 和 tomcat02 是公用的一個路由器，由docker0, 所有的容器不指定網絡的情況下，都是docker0路由的，docker體給我們的容器分配一個默認的可用ip**
+
+> 小結
+
+ Docker使用的是Linux的橋接，宿主機中是一個Docker容器的網橋 docker0
+
+ Docker中的所有的網絡接口都是虛擬的，虛擬的轉發效率高
+
+ 只要容器刪除，對應網橋一對就沒了
+
+> 思考一個場景，我們編寫了一個微服務，database url=ip: , 項目不重啟，數據庫ip換掉了，我們希望可以處理這個問題，可以名字來進行訪問容器?  (高可用)
+
+--link
+
+```shell
+# 透過 --link 可以解決網路連通問題
+docker run -d -P --name tomcat03 --link tomcat02 tomcat
+docker exec -it tomcat03 ping tomcat02
+
+# 但在未設置的情況下tomcat02不能反向連通tomcat03
+```
+
+![image](./images/20200813145538.png)
+
+```shell
+docker network ls
+docker network inspect 9c287ff32952
+```
+
+![image](./images/20200813150020.png)
+
+![image](./images/20200813150225.png)
+
+```shell
+docker ps
+docker inspect e660a114baa9
+```
+
+![image](./images/20200813150512.png)
+
+```shell
+# 查看 hosts 配置，在這裡發現原理，其實這個tomcat03就是在本地配置了tomcat02的配置
+docker exec -it tomcat03 cat /etc/hosts
+```
+
+![image](./images/20200813151056.png)
+
+本質探究： --link 就是在hosts配置中增加了一個 172.17.0.4	tomcat02 e660a114baa9
+
+我們現在玩Docker已經不建議使用--link了
+
+自定義網路! 不適用docker0!
+
+docker0問題： 它不支持容器名連接訪問
+
+# 自定義網絡
+
+查看所有的docker網絡
+
+```shell
+docker network ls
+```
+
+![image](./images/20200813151656.png)
+
+## 網絡模式
+
+bridge ： 橋接 docker (默認，自己定義也使用bridge模式)
+
+none ： 不配置網絡 
+
+host ： 和宿主機共享網絡
+
+container ： 容器內網絡連通 (用的少)
+
+**測試**
+
+```shell
+# 我們直接啟動的命令 --net bridge，而這個就是我們的docker0，默認即有--net bridge
+docker run -d -P --name tomcat01 tomcat
+docker run -d -P --name tomcat01 --net bridge tomcat
+
+# docker0特點： 默認，域名不能訪問， --link可以打通連接
+
+# 我們可以自定義一個網絡
+```
+
+```shell
+# --driver bridge
+# --subnet 192.168.0.0/16
+# --gateway 192.168.0.1
+docker network create --driver bridge --subnet 192.168.0.0/16 --gateway 192.168.0.1 mynet
+docker network ls
+```
+
+![image](./images/20200813155351.png)
+
+我們自己的網絡就創建好了
+
+```shell
+docker network inspect mynet
+```
+
+![image](./images/20200813161627.png)
+
+
+```shell
+docker run -d -P --name tomcat-net-01 --net mynet tomcat
+docker run -d -P --name tomcat-net-02 --net mynet tomcat
+docker network inspect mynet
+```
+
+![image](./images/20200813162302.png)
+
+![image](./images/20200813161811.png)
+
+![image](./images/20200813161913.png)
+
+ping IP或名稱，都可以ping通
+
+```shell
+# 現在不使用--link也可以ping 名字了
+docker exec -it tomcat-net-01 ping 192.168.0.3
+docker exec -it tomcat-net-01 ping tomcat-net-02
+```
+
+![image](./images/20200813163104.png)
+
+我們自定義的網絡docker都已經幫我們維護好了對應的關係，推薦我們平時這樣使用網絡
+
+好處：
+
+redis - 不同的集群使用不同的網絡，保證集群是安全和健康的
+
+mysql - 不同的集群使用不同
+的網絡，保證集群是安全和健康的
+
+# 網路連通
+
+```shell
+docker network --help
+```
+
+![image](./images/20200813165105.png)
+
+```shell
+docker network connect mynet tomcat01
+docker network inspect mynet
+```
+
+![image](./images/20200813170121.png)
+
+![image](./images/20200813170154.png)
+
+測試打通 tomcat01 - mynet
+
+連通之後就是將 tomcat01 放到了 mynet 網絡下
+
+一個容器兩個ip地址
+
+阿里雲服務，公網ip、私網ip
+
+![image](./images/20200813171116.png)
+
+結論：假設要跟網絡操作別人，就需要使用docker network connect 連通!
+
+# 實戰：部署Redis集群
+
+先關閉現有的ps
+```shell
+docker rm -f $(docker ps -aq)
+```
+
+![image](./images/20200813173041.png)
+
+```shell
+docker network create redis --subnet 172.38.0.0/16
+docker network ls
+docker network inspect redis
+```
+
+![image](./images/20200813173408.png)
+
+```shell
+for port in $(seq 1 6); \
+do \
+mkdir -p /mydata/redis/node-${port}/conf
+touch /mydata/redis/node-${port}/conf/redis.conf
+cat << EOF >/mydata/redis/node-${port}/conf/redis.conf
+port 6379
+bind 0.0.0.0
+cluster-enabled yes
+cluster-config-file nodes.conf
+cluster-node-timeout 5000
+cluster-announce-ip 172.38.0.1${port}
+cluster-announce-port 6379
+cluster-announce-bus-port 16379
+appendonly yes
+EOF
+done
+```
+
+![image](./images/20200813174316.png)
+
+```shell
+docker run -p 6371:6379 -p 16371:16379 --name redis-1 \
+-v /mydata/redis/node-1/data:/data \
+-v /mydata/redis/node-1/conf/redis.conf:/etc/redis/redis.conf \
+-d --net redis --ip 172.38.0.11 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+
+
+
+```
+
+
+
+
+
+
+
+golang進度
+![image](./images/20200813180053.png)
+
+
+# 筆記到p38
