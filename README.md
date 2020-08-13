@@ -1137,10 +1137,3 @@ docker run -p 6371:6379 -p 16371:16379 --name redis-1 \
 
 
 
-
-
-golang進度
-![image](./images/20200813180053.png)
-
-
-# 筆記到p38
