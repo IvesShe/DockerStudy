@@ -1123,17 +1123,359 @@ done
 
 ![image](./images/20200813174316.png)
 
+
+```shell
+docker rm -f $(docker ps -aq)   #刪除所有容器
+```
+
+新增6台Redis
 ```shell
 docker run -p 6371:6379 -p 16371:16379 --name redis-1 \
 -v /mydata/redis/node-1/data:/data \
 -v /mydata/redis/node-1/conf/redis.conf:/etc/redis/redis.conf \
 -d --net redis --ip 172.38.0.11 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+```
+```shell
+docker run -p 6372:6379 -p 16372:16379 --name redis-2 \
+-v /mydata/redis/node-2/data:/data \
+-v /mydata/redis/node-2/conf/redis.conf:/etc/redis/redis.conf \
+-d --net redis --ip 172.38.0.12 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+```
+```shell
+docker run -p 6373:6379 -p 16373:16379 --name redis-3 \
+-v /mydata/redis/node-3/data:/data \
+-v /mydata/redis/node-3/conf/redis.conf:/etc/redis/redis.conf \
+-d --net redis --ip 172.38.0.13 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+```
+```shell
+docker run -p 6374:6379 -p 16374:16379 --name redis-4 \
+-v /mydata/redis/node-4/data:/data \
+-v /mydata/redis/node-4/conf/redis.conf:/etc/redis/redis.conf \
+-d --net redis --ip 172.38.0.14 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+```
+```shell
+docker run -p 6375:6379 -p 16375:16379 --name redis-5 \
+-v /mydata/redis/node-5/data:/data \
+-v /mydata/redis/node-5/conf/redis.conf:/etc/redis/redis.conf \
+-d --net redis --ip 172.38.0.15 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+```
+```shell
+docker run -p 6376:6379 -p 16376:16379 --name redis-6 \
+-v /mydata/redis/node-6/data:/data \
+-v /mydata/redis/node-6/conf/redis.conf:/etc/redis/redis.conf \
+-d --net redis --ip 172.38.0.16 redis:5.0.9-alpine3.11 redis-server /etc/redis/redis.conf
+```
+
+![image](./images/20200814093427.png)
+
+```shell
+docker exec -it redis-1 /bin/sh
+```
+
+建立集群
+```shell
+redis-cli --cluster create 172.38.0.11:6379 172.38.0.12:6379 172.38.0.13:6379 172.38.0.14:6379 172.38.0.15:6379 172.38.0.16:6379 --cluster-replicas 1
+```
+
+![image](./images/20200814094354.png)
+
+新增一筆name資料
+```shell
+redis-cli -c
+
+cluster info
+cluster nodes
+set name ivesshe
+```
+
+![image](./images/20200814094918.png)
+
+停止redis-2
+```shell
+docker stop redis-2
+```
+
+![image](./images/20200814095130.png)
+
+重新進入redis測試
+```shell
+docker exec -it redis-1 /bin/sh
+
+redis-cli -c
+get name
+```
+
+發現停止redis-2，redis-6補上，redis-6是redis-2的從機
+
+![image](./images/20200814095758.png)
+
+![image](./images/20200814095740.png)
+
+觀察集群
+```shell
+cluster nodes
+```
+
+![image](./images/20200814100210.png)
+
+docker搭建redis集群完成
 
 
+golang進度
+![image](./images/20200813180053.png)
+
+
+# Docker Compose
+
+## 三步驟
+1. Dockerfile
+2. docker-compose.yml
+3. docker-compose up
+
+[文檔參考](https://docs.docker.com/compose/)
+
+# 安裝Docker Compose
+
+[文檔參考](https://docs.docker.com/compose/install/)
+
+1、下載
+
+```shell
+sudo curl -L "https://github.com/docker/compose/releases/download/1.26.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+cd /usr/local/bin/
+```
+
+![image](./images/20200814114014.png)
+
+2、授權
+
+```shell
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+![image](./images/20200814114407.png)
+
+## 體驗
+
+python應用、計數器、redis
+[文檔參考](https://docs.docker.com/compose/gettingstarted/)
+
+```shell
+mkdir composetest
+cd composetest/
+vim app.py
+vim requirements.txt
+vim Dockerfile
+cat Dockerfile
+```
+
+![image](./images/20200814115228.png)
+
+![image](./images/20200814114853.png)
+
+![image](./images/20200814115016.png)
+
+![image](./images/20200814115127.png)
+
+```shell
+vim docker-compose.yml
+cat docker-compose.yml 
+```
+
+![image](./images/20200814115654.png)
+
+1、應用 app.py
+2、Dockerfile 應用打包為鏡像
+3、Docker-compose yaml文件 (定義整個服務，需要的環境，web、redis)
+4、啟動compose項目(docker-compose up)
+
+```shell
+docker-compose up
+```
+
+官網提供的Dockerfile有問題，要修改成下面的
+```shell
+FROM python:3.6-alpine
+ADD . /code
+WORKDIR /code
+RUN pip install -r requirements.txt
+CMD ["python","app.py"]
+```
+
+```shell
+docker-compose build
+```
+
+```shell
+docker-compose up
+```
+
+多打了一個i
+
+![image](./images/20200814132915.png)
+
+最後還是有問題(暫時先不研究了)
+
+![image](./images/20200814133426.png)
+
+![image](./images/20200814131620.png)
+
+![image](./images/20200814133715.png)
+
+只要通過compose啟動，就會生成一個自己的網絡
+```shell
+docker network ls
+```
+
+![image](./images/20200814133954.png)
+
+
+停止: docker-compose down OR ctrl+c
+
+## yaml規則
+
+[文檔參考](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples)
+
+```shell
+# 3層
+
+version: '' # 版本
+services:   # 服務
+    服務1: web
+        # 服務配置
+        images
+        build
+        network
+        .....
+    服務2: redis
+        .....
+    服務3:
+        ......
+# 其它配置 網絡/卷、全局規則        
+volumes:
+networks:
+configs:
 
 ```
 
+```shell
+version: '3'
+services:
+  web:
+    container_name: my-web-container
+    build: .
+    ports:
+      - "5000:5000"
+  redis:
+    image: "redis:alpine"
+```
 
+depends_on 依賴
+先啟動db及redis，才會啟動web
+```shell
+version: "3.8"
+services:
+  web:
+    build: .
+    depends_on:
+      - db
+      - redis
+  redis:
+    image: redis
+  db:
+    image: postgres
+```
 
+deploy 部署
+```shell
+version: "3.8"
+services:
+  redis:
+    image: redis:alpine
+    deploy:
+      replicas: 6
+      placement:
+        max_replicas_per_node: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+```
 
+環境
+```shell
+environment:
+  - RACK_ENV=development
+  - SHOW=true
+  - SESSION_SECRET
+```
+
+```shell
+expose:
+  - "3000"
+  - "8000"
+```
+
+# 開源項目
+## 博客
+
+下載程序、安裝數據庫、配置...
+
+compose應用 => 一鍵啟動!
+
+[文檔參考](https://docs.docker.com/compose/wordpress/)
+
+docker-compose.yml
+```shell
+version: '3.3'
+
+services:
+   db:
+     image: mysql:5.7
+     volumes:
+       - db_data:/var/lib/mysql
+     restart: always
+     environment:
+       MYSQL_ROOT_PASSWORD: somewordpress
+       MYSQL_DATABASE: wordpress
+       MYSQL_USER: wordpress
+       MYSQL_PASSWORD: wordpress
+
+   wordpress:
+     depends_on:
+       - db
+     image: wordpress:latest
+     ports:
+       - "8000:80"
+     restart: always
+     environment:
+       WORDPRESS_DB_HOST: db:3306
+       WORDPRESS_DB_USER: wordpress
+       WORDPRESS_DB_PASSWORD: wordpress
+       WORDPRESS_DB_NAME: wordpress
+volumes:
+    db_data: {}
+```
+
+```shell
+docker-compose up
+```
+
+![image](./images/20200814141038.png)
+
+![image](./images/20200814141044.png)
+
+![image](./images/20200814141145.png)
+
+![image](./images/20200814141212.png)
+
+![image](./images/20200814141222.png)
+
+![image](./images/20200814141235.png)
+
+![image](./images/20200814141610.png)
+
+![image](./images/20200814141614.png)
 
